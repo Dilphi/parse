@@ -23,9 +23,10 @@ def main(page: flet.Page):
             news_container.controls.append(flet.Text("Файл news.csv не найден. Пожалуйста, сначала загрузите новости."))
         page.update()
 
+
     def save_news(_=None):
-        if os.path.exists("news.txt"):
-            with open("news.txt", "r", encoding="utf-8") as file:
+        if os.path.exists("news.csv"):
+            with open("news.csv", "r", encoding="utf-8") as file:
                 news = file.readlines()
             news_container.controls.clear()
             for item in news:
@@ -33,14 +34,14 @@ def main(page: flet.Page):
             page.update()
         else:
             news_container.controls.clear()
-            news_container.controls.append(flet.Text("Файл news.txt не найден. Пожалуйста, сначала загрузите новости."))
+            news_container.controls.append(flet.Text("Файл news.csv не найден. Пожалуйста, сначала загрузите новости."))
             page.update()
 
 
     def load_news(_=None):
         show_news()
         news_container.controls.clear()
-        if os.path.exists("news.cvs"):
+        if os.path.exists("news.csv"):
             df = pd.read_csv("news.csv", encoding='utf-8')
             for _, row in df.iterrows():
                 news_container.controls.append(flet.Text(f"{row['Заголовок']} — {row['Дата']}"))
