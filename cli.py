@@ -1,75 +1,90 @@
-import requests
-import bs4
-import pandas as pd
+import db
 import parse
+import sys
 
-def get_text(article_soup):
-    """Извлекает текст статьи из soup-объекта."""
-    paragraphs = article_soup.find_all("p")
-    if paragraphs:
-        return "\n".join(
-            p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)
-        )
-    # Если <p> нет, пробуем <span>
-    spans = article_soup.find_all("span")
-    if spans:
-        return "\n".join(
-            span.get_text(strip=True) for span in spans if span.get_text(strip=True)
-        )
-    return ""
-    
-def main():
-    # Сначала парсим и сохраняем новости
-    parse.main()
+def show_main_menu():
+    print("\n=== Новости МИТУ — CLI ===")
+    print("1. Обновить/Парсить новости (из сети)")
+    print("2. Показать список новостей")
+    print("q. Выход")
+    print("==========================")
 
-    # Загружаем список новостей из файла CSV
-    try:
-        df = pd.read_csv("news.csv", encoding="utf-8")
-        news_list = df.values.tolist()
-    except Exception as e:
-        print("Ошибка при загрузке news.csv:", e)
+def show_news_list():
+    rows = db.list_news()
+    if not rows:
+        print("Список новостей пуст. Сначала запустите парсер (1).")
         return
+    print("\nСписок новостей:")
+    for r in rows:
+        print(f"{r[0]}. {r[1]} — {r[2]}")
+    print("\nВведите номер новости чтобы просмотреть (или 'b' — назад, 'q' — выход).")
 
-    # CLI-выбор
-    stat = input("Введите номер статьи (1-10), или 0 для выхода: ")
-
-    try:
-        stat_int = int(stat)
-    except ValueError:
-        stat_int = None
-
-    if stat_int is not None and 1 <= stat_int <= len(news_list):
-        selected = news_list[stat_int - 1]
-        print(f"\n📌 Вы выбрали новость:\n{selected[0]} — {selected[1]}")
-
-    
-        print(f"Ссылка: {selected[2] if selected[2] else '❌ Ссылки нет'}")
-
-        if not selected[2]:  # если ссылки нет
-            print("⚠ У этой новости нет отдельной страницы.")
-            return
-
-        # Загружаем текст статьи
-        response = requests.get(selected[2])
-        if response.status_code == 200:
-            article_soup = bs4.BeautifulSoup(response.text, 'html.parser')
-            article_text = get_text(article_soup)
-
-            print("\n=== Текст статьи ===\n")
-            print(article_text[:1500], "..." if len(article_text) > 1500 else "")
-
-            # Сохраняем в файл
-            with open("article.txt", "w", encoding="utf-8") as f:
-                f.write(f"{selected[0]}\n{selected[1]}\n\n{article_text}")
-            print("💾 Статья сохранена в article.txt")
-        else:
-            print(f'Ошибка загрузки статьи: {response.status_code}')
-
-    elif stat_int == 0:
-        print("Выход.")
+def view_article(news_id: int):
+    meta = db.get_news_meta(news_id)
+    if not meta:
+        print("Новость не найдена.")
+        return
+    print(f"\n📌 {meta[1]} — {meta[2]}")
+    content = db.get_latest_article_text(news_id)
+    if not content:
+        print("Текст статьи пуст или не был скачан.")
     else:
-        print("Некорректный выбор статьи.")
+        # показываем первые N символов с опцией показать больше
+        pos = 0
+        page_len = 1500
+        while True:
+            chunk = content[pos:pos+page_len]
+            print("\n" + chunk)
+            pos += page_len
+            if pos >= len(content):
+                print("\n--- Конец статьи ---")
+                break
+            cmd = input("\nНажмите Enter чтобы продолжить, 'b' — назад, 's' — сохранить в файл, 'q' — выход: ").strip().lower()
+            if cmd == "b":
+                return
+            if cmd == "s":
+                with open("article.txt", "w", encoding="utf-8") as f:
+                    f.write(f"{meta[1]}\n{meta[2]}\n\n{content}")
+                print("Сохранено в article.txt")
+            if cmd == "q":
+                sys.exit(0)
+        # в конце даём опции
+        cmd = input("\n'b' — назад, 's' — сохранить в файл, 'q' — выход: ").strip().lower()
+        if cmd == "s":
+            with open("article.txt", "w", encoding="utf-8") as f:
+                f.write(f"{meta[1]}\n{meta[2]}\n\n{content}")
+            print("Сохранено в article.txt")
+        if cmd == "q":
+            sys.exit(0)
 
+def main():
+    db.init_db()
+    while True:
+        show_main_menu()
+        choice = input("Выберите опцию: ").strip().lower()
+        if choice == "1":
+            print("Запуск парсера... (может занять секунды)")
+            parse.main()
+            input("Нажмите Enter чтобы продолжить...")
+        elif choice == "2":
+            while True:
+                show_news_list()
+                cmd = input("Ваш ввод: ").strip().lower()
+                if cmd == "b":
+                    break
+                if cmd == "q":
+                    print("Выход.")
+                    sys.exit(0)
+                try:
+                    nid = int(cmd)
+                    view_article(nid)
+                except ValueError:
+                    print("Неверный ввод. Введите номер новости, 'b' или 'q'.")
+        elif choice == "q":
+            print("Выход.")
+            break
+        else:
+            print("Неверный выбор. Попробуйте ещё раз.")
 
 if __name__ == "__main__":
     main()
