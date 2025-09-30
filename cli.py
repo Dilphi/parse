@@ -3,6 +3,21 @@ import bs4
 import pandas as pd
 import parse
 
+def get_text(article_soup):
+    """Извлекает текст статьи из soup-объекта."""
+    paragraphs = article_soup.find_all("p")
+    if paragraphs:
+        return "\n".join(
+            p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)
+        )
+    # Если <p> нет, пробуем <span>
+    spans = article_soup.find_all("span")
+    if spans:
+        return "\n".join(
+            span.get_text(strip=True) for span in spans if span.get_text(strip=True)
+        )
+    return ""
+    
 def main():
     # Сначала парсим и сохраняем новости
     parse.main()
@@ -26,6 +41,8 @@ def main():
     if stat_int is not None and 1 <= stat_int <= len(news_list):
         selected = news_list[stat_int - 1]
         print(f"\n📌 Вы выбрали новость:\n{selected[0]} — {selected[1]}")
+
+    
         print(f"Ссылка: {selected[2] if selected[2] else '❌ Ссылки нет'}")
 
         if not selected[2]:  # если ссылки нет
@@ -36,10 +53,7 @@ def main():
         response = requests.get(selected[2])
         if response.status_code == 200:
             article_soup = bs4.BeautifulSoup(response.text, 'html.parser')
-            paragraphs = article_soup.find_all("p")
-            article_text = "\n".join(
-                p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)
-            )
+            article_text = get_text(article_soup)
 
             print("\n=== Текст статьи ===\n")
             print(article_text[:1500], "..." if len(article_text) > 1500 else "")
@@ -48,7 +62,6 @@ def main():
             with open("article.txt", "w", encoding="utf-8") as f:
                 f.write(f"{selected[0]}\n{selected[1]}\n\n{article_text}")
             print("💾 Статья сохранена в article.txt")
-
         else:
             print(f'Ошибка загрузки статьи: {response.status_code}')
 

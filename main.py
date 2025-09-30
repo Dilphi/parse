@@ -1,6 +1,6 @@
 # main.py
 import flet
-import parse
+import cli
 import app
 
 def main(page: flet.Page):
@@ -9,10 +9,10 @@ def main(page: flet.Page):
 
     def open_gui(_):
         page.clean()
-        app.main(page)  # просто загружаем GUI из app.py в тот же page
-
+        app.main(page)  # просто загружаем GUI из app.py
+        
     gui_button = flet.ElevatedButton(text="Запустить GUI", on_click=open_gui)
-    cli_button = flet.ElevatedButton(text="Загрузить новости в консоли", on_click=lambda _: parse.main())
+    cli_button = flet.ElevatedButton(text="Загрузить новости в консоли", on_click=lambda _: cli.main())
 
     page.add(gui_button, cli_button)
 

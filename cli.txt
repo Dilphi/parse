@@ -1,0 +1,2 @@
+response = requests.get(selected[2])
+    

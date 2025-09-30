@@ -8,6 +8,7 @@ def main():
 
     url = urljoin(BASE_URL, "?page=news#gsc.tab=0")
     response = requests.get(url)
+    
 
     if response.status_code == 200:
         soup = bs4.BeautifulSoup(response.text, 'html.parser')
